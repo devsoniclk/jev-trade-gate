@@ -1,0 +1,37 @@
+# Jev Trade Gate Configuration
+openrouter:
+  base_url: "https://openrouter.ai/api/alpha/decisions"
+  model: "typesafe/jev-1.13"
+  timeout: 30
+  max_retries: 3
+
+gate:
+  # Auto-approve threshold: if Jev confidence >= this, auto-approve
+  auto_approve_threshold: 0.85
+  # Auto-reject threshold: if Jev confidence <= this, auto-reject
+  auto_reject_threshold: 0.20
+  # Default position sizing by Jev recommendation
+  sizing_map:
+    execute-full: 1.0
+    execute-half: 0.5
+    execute-quarter: 0.25
+    skip: 0.0
+    reverse: -1.0
+
+server:
+  host: "0.0.0.0"
+  port: 8420
+  debug: false
+
+logging:
+  enabled: true
+  file: "logs/trades.jsonl"
+  max_size_mb: 100
+  # Log rejected signals too
+  log_rejected: true
+
+rate_limit:
+  # Max evaluations per minute
+  per_minute: 60
+  # Cooldown per asset in seconds (prevent rapid re-evaluation)
+  per_asset_cooldown: 5
