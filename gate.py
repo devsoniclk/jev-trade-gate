@@ -117,27 +117,61 @@ class TradeGate:
         return decision
 
     def _parse_decision(self, raw: dict) -> GateDecision:
-        """Parse Jev response into a GateDecision."""
-        answers = raw.get("answers", raw.get("decisions", []))
-        if not answers:
-            answers = raw.get("results", [])
+        """Parse Jev response into a GateDecision.
 
-        # Extract answers by position (matching our question order)
+        Jev returns answers as a dict keyed by question name:
+          answers.action  -> {"type": "choice", "choice": {"execute-full": 0.6, ...}, "confidence": 0.7}
+          answers.risk    -> {"type": "score", "score": 2.5, ...}
+          answers.likely_profitable -> {"type": "noul", "noul": 0.85}
+          answers.better_entry      -> {"type": "noul", "noul": 0.3}
+        """
+        answers = raw.get("answers", raw.get("decisions", {}))
+        if not answers:
+            answers = raw.get("results", {})
+
+        # Default values
         action = "skip"
         risk = "medium"
         likely_profitable = None
         better_entry = None
 
-        for i, ans in enumerate(answers):
-            val = ans.get("answer", ans.get("value", ans.get("choice", "")))
-            if i == 0:  # Should this trade be executed?
-                action = str(val) if val else "skip"
-            elif i == 1:  # Risk assessment
-                risk = str(val) if val else "medium"
-            elif i == 2:  # Likely profitable
-                likely_profitable = _to_bool(val)
-            elif i == 3:  # Better entry available
-                better_entry = _to_bool(val)
+        # Parse action (choice type) — pick the highest-probability option
+        action_ans = answers.get("action", {})
+        if isinstance(action_ans, dict):
+            choice_map = action_ans.get("choice", action_ans.get("answer", {}))
+            if isinstance(choice_map, dict) and choice_map:
+                action = max(choice_map, key=choice_map.get)
+            elif isinstance(choice_map, str):
+                action = choice_map
+
+        # Parse risk (score type) — score is a float index into the criteria list
+        risk_ans = answers.get("risk", {})
+        risk_labels = ["very-low", "low", "medium", "high", "extreme"]
+        if isinstance(risk_ans, dict):
+            score_val = risk_ans.get("score", risk_ans.get("answer"))
+            if isinstance(score_val, (int, float)):
+                idx = min(max(int(round(score_val)), 0), len(risk_labels) - 1)
+                risk = risk_labels[idx]
+            elif isinstance(score_val, str):
+                risk = score_val
+
+        # Parse likely_profitable (noul type) — probability float
+        lp_ans = answers.get("likely_profitable", {})
+        if isinstance(lp_ans, dict):
+            noul_val = lp_ans.get("noul", lp_ans.get("answer"))
+            if isinstance(noul_val, (int, float)):
+                likely_profitable = noul_val >= 0.5
+            elif isinstance(noul_val, bool):
+                likely_profitable = noul_val
+
+        # Parse better_entry (noul type) — probability float
+        be_ans = answers.get("better_entry", {})
+        if isinstance(be_ans, dict):
+            noul_val = be_ans.get("noul", be_ans.get("answer"))
+            if isinstance(noul_val, (int, float)):
+                better_entry = noul_val >= 0.5
+            elif isinstance(noul_val, bool):
+                better_entry = noul_val
 
         # Compute confidence score
         confidence = self._compute_confidence(action, risk, likely_profitable, better_entry)

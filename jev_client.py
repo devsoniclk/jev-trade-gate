@@ -27,7 +27,7 @@ class JevClient:
     def evaluate(
         self,
         state: dict[str, Any],
-        questions: list[dict[str, Any]],
+        questions: dict[str, dict[str, Any]],
     ) -> dict[str, Any]:
         """Send a decision request to Jev and return parsed answers."""
         payload = {
@@ -89,27 +89,33 @@ class JevClient:
         }
 
     @staticmethod
-    def default_questions() -> list[dict[str, Any]]:
-        return [
-            {
-                "question": "Should this trade be executed?",
+    def default_questions() -> dict[str, dict[str, Any]]:
+        return {
+            "action": {
                 "type": "choice",
-                "choices": ["execute-full", "execute-half", "execute-quarter", "skip", "reverse"],
+                "instructions": "Should this trade be executed?",
+                "criteria": {
+                    "execute-full": "The signal is strong and all conditions are met for a full position.",
+                    "execute-half": "The signal is moderate; a half position is appropriate.",
+                    "execute-quarter": "The signal is weak but has some merit; a small quarter position.",
+                    "skip": "The signal does not meet criteria; do not execute this trade.",
+                    "reverse": "The signal is actively harmful; consider the opposite direction.",
+                },
             },
-            {
-                "question": "Risk assessment?",
+            "risk": {
                 "type": "score",
-                "labels": ["very-low", "low", "medium", "high", "extreme"],
+                "instructions": "How risky is this trade?",
+                "criteria": ["very-low", "low", "medium", "high", "extreme"],
             },
-            {
-                "question": "Is this signal likely profitable?",
-                "type": "bool",
+            "likely_profitable": {
+                "type": "noul",
+                "instructions": "Is this signal likely to be profitable?",
             },
-            {
-                "question": "Is there a better entry available?",
-                "type": "bool",
+            "better_entry": {
+                "type": "noul",
+                "instructions": "Is there a better entry point available?",
             },
-        ]
+        }
 
 
 class JevAPIError(Exception):
