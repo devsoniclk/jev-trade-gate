@@ -2,6 +2,32 @@
 
 A reusable Python middleware that gates every trade signal through [Jev](https://openrouter.ai) (typesafe/jev-1.13) before execution. Drop it into any trading bot — decorator, middleware function, or REST API.
 
+
+## 🛡️ Pre-Trade Risk Firewall
+
+```mermaid
+flowchart TD
+    IncomingSignal["Incoming Trade Request
+(From Jev Decision Agents)"] --> TradeGate["Jev Trade Gate Firewall"]
+    
+    subgraph SecurityGates ["Pre-Trade Risk Verification"]
+        Gate1["Gate 1: Daily Drawdown Limit Check
+(Hard Stop Threshold)"]
+        Gate2["Gate 2: Counter-Trend Protection
+(High-Timeframe Alignment)"]
+        Gate3["Gate 3: Position Size & Leverage Cap
+(Max Portfolio Exposure %)"]
+        Gate4["Gate 4: Deduplication & Idempotency
+(Prevent Re-entrancy / Duplicate Orders)"]
+    end
+
+    TradeGate --> SecurityGates
+    SecurityGates -->|All 4 Gates Passed| Allowed["APPROVED: Dispatch to Exchange"]
+    SecurityGates -->|Any Gate Failed| Blocked["REJECTED: Log to Risk Ledger & Discard"]
+```
+
+---
+
 ## Quick Start
 
 ```bash
